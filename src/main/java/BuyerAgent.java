@@ -12,6 +12,7 @@ import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
+import java.util.Iterator;
 import java.util.Map;
 
 public class BuyerAgent extends Agent{
@@ -29,6 +30,7 @@ public class BuyerAgent extends Agent{
 
         addBehaviour(new TickerBehaviour(this, 1000) {
             @Override
+            //TODO: rewrite with behaviours sequence
             protected void onTick() {
                 String currentProductName = getNextWishedProductName();
                 if (currentProductName == null) {
@@ -41,16 +43,29 @@ public class BuyerAgent extends Agent{
 
                         DFAgentDescription agentTemplate = new DFAgentDescription();
                         ServiceDescription serviceDescription = new ServiceDescription();
-                        serviceDescription.setType(currentProductName);
+                        serviceDescription.setType("Shop_product");
                         agentTemplate.addServices(serviceDescription);
                         try {
+                            // Find a shop which sells desired product for best price(wholesale)
                             DFAgentDescription[] result = DFService.search(myAgent, agentTemplate);
-                            if (result.length == 0) {
+                            int bestWholesalePrice = money;
+                            for (DFAgentDescription shop: result) {
+                                Iterator itr = shop.getAllServices();
+                                while (itr.hasNext()) {
+                                    ServiceDescription productInfo = (ServiceDescription) itr.next();
+                                    if (YellowPagesParser.getShopProductName(productInfo.getName()).equals(currentProductName)) {
+                                        if (YellowPagesParser.getShopProductWholesalePrice(productInfo.getName()) < bestWholesalePrice) {
+                                            bestWholesalePrice = YellowPagesParser.getShopProductWholesalePrice(productInfo.getName());
+                                            seller = new AID();
+                                            seller = shop.getName();
+                                        }
+                                    }
+                                }
+                            }
+                            if (seller == null) {
                                 System.out.println(getAID().getName() + " tried to find a shop which sells " + currentProductName + " but was unsuccessful!");
                                 return;
                             }
-                            seller = new AID();
-                            seller = result[0].getName();
                         }
                         catch (FIPAException fe) {
                             fe.printStackTrace();

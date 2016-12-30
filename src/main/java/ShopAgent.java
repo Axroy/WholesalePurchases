@@ -77,8 +77,9 @@ public class ShopAgent extends Agent{
         dfd.setName(getAID());
         for (Product product: stock) {
             ServiceDescription sd = new ServiceDescription();
-            sd.setType(product.getName());
-            sd.setName(String.valueOf(product.getPrice()));
+            sd.setType("Shop_product");
+            sd.setName(product.getName() + " " + String.valueOf(product.getPrice()) + " " +
+                String.valueOf(product.getWholesalePrice()) + " " + String.valueOf(product.getCondition()));
             dfd.addServices(sd);
         }
         try {
