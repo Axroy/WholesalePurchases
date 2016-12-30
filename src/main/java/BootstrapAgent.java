@@ -21,11 +21,11 @@ public class BootstrapAgent extends Agent{
         ContainerController containerController = getContainerController();
         AgentController agentController;
         try {
-            Product potato = new Product("potato", 1000, 5, 3, 10);
-            Product youngPotato = new Product("young_potato", 200, 10, 6, 10);
-            Product tomato = new Product("tomato", 3000, 20, 12, 30);
-            Product maize = new Product("maize", 9000, 8, 5, 20);
-            Product cucumber = new Product("cucumber", 800, 15, 10, 15);
+            Product potato = new Product("potato", 5, 3, 10);
+            Product youngPotato = new Product("young_potato",  10, 6, 10);
+            Product tomato = new Product("tomato", 20, 12, 30);
+            Product maize = new Product("maize",  8, 5, 20);
+            Product cucumber = new Product("cucumber", 15, 10, 15);
 
             List<Product> potatoCountryStock = new LinkedList<Product>();
             potatoCountryStock.add(potato);

@@ -6,10 +6,6 @@ public class Product {
         return name;
     }
 
-    public int getNumber() {
-        return number;
-    }
-
     public int getPrice() {
         return price;
     }
@@ -22,17 +18,16 @@ public class Product {
         return condition;
     }
 
-    public Product(String name, int number, int price, int wholesalePrice, int condition) {
+    public Product(String name, int price, int wholesalePrice, int condition) {
         this.name = name;
-        this.number = number;
         this.price = price;
         this.wholesalePrice = wholesalePrice;
         this.condition = condition;
     }
 
     private String name;
-    private int number;
     private int price;
     private int wholesalePrice;
+    // minimal number of products needed for wholesale price
     private int condition;
 }
