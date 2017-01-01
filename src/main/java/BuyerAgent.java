@@ -28,7 +28,7 @@ public class BuyerAgent extends Agent{
         money = (Integer) arg[0];
         productWishes = (Map<String, Integer>) arg[1];
 
-        SequentialBehaviour buyContinuously = new SequentialBehaviour(this) {
+        SequentialBehaviour buyRetail = new SequentialBehaviour(this) {
             public int onEnd() {
                 doWait(1000);
                 reset();
@@ -96,10 +96,10 @@ public class BuyerAgent extends Agent{
                 ACLMessage message = new ACLMessage(ACLMessage.QUERY_IF);
                 message.addReceiver(seller);
                 message.setContent(currentProductName);
-                message.setConversationId("trade");
+                message.setConversationId("retail");
                 message.setReplyWith(String.valueOf(System.currentTimeMillis()));
                 myAgent.send(message);
-                template = MessageTemplate.and(MessageTemplate.MatchConversationId("trade"), MessageTemplate.MatchInReplyTo(message.getReplyWith()));
+                template = MessageTemplate.and(MessageTemplate.MatchConversationId("retail"), MessageTemplate.MatchInReplyTo(message.getReplyWith()));
 
                 finished = true;
             }
@@ -121,12 +121,13 @@ public class BuyerAgent extends Agent{
                 ACLMessage reply = myAgent.receive(template);
                 if (reply != null) {
                     if (!reply.getContent().equals("not_available")) {
-                        System.out.println(getAID().getName() + " bought 1 " + currentProductName + "!");
-                        // decrement wished quantity
-                        productWishes.put(currentProductName, productWishes.get(currentProductName) - 1);
+                        System.out.println(getAID().getName() + " bought " + productWishes.get(currentProductName) + " " + currentProductName
+                            + " for " + (Integer.valueOf(reply.getContent()) * productWishes.get(currentProductName)) + "$!");
+                        money -= Integer.valueOf(reply.getContent()) * productWishes.get(currentProductName);
+                        productWishes.put(currentProductName, 0);
                     }
                     else {
-                        System.out.println(getAID().getName() + " tried to buy 1 " + currentProductName + " but it wasn't available!");
+                        System.out.println(getAID().getName() + " tried to buy " + currentProductName + " but it wasn't available!");
                     }
                     finished = true;
                 }
@@ -141,10 +142,10 @@ public class BuyerAgent extends Agent{
             }
         };
 
-        buyContinuously.addSubBehaviour(findProduct);
-        buyContinuously.addSubBehaviour(sendRequest);
-        buyContinuously.addSubBehaviour(receiveReply);
-        addBehaviour(buyContinuously);
+        buyRetail.addSubBehaviour(findProduct);
+        buyRetail.addSubBehaviour(sendRequest);
+        buyRetail.addSubBehaviour(receiveReply);
+        addBehaviour(buyRetail);
 
         String log = "New buyer appears! Name's " + getAID().getName() + "!" + "\n";
         log += "    " + "Money: " + money + "$" + "\n";

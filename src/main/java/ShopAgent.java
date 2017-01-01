@@ -3,7 +3,6 @@
  */
 
 import jade.core.Agent;
-import jade.core.AgentContainer;
 import jade.core.behaviours.*;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -11,18 +10,20 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
-import jade.wrapper.*;
 
 import java.util.List;
-import java.util.Map;
 
 public class ShopAgent extends Agent{
     private List<Product> stock;
 
-    private class StockInform extends CyclicBehaviour {
+    // Retail queries have conversation id "retail"
+    private class RetailStockInform extends CyclicBehaviour {
         public void action() {
             MessageTemplate informQuery = MessageTemplate.MatchPerformative(ACLMessage.QUERY_IF);
-            ACLMessage message = myAgent.receive(informQuery);
+            MessageTemplate retail = MessageTemplate.MatchConversationId("retail");
+            MessageTemplate retailInform = MessageTemplate.and(informQuery, retail);
+            ACLMessage message = myAgent.receive(retailInform);
+
             if (message != null) {
                 String productName = message.getContent();
                 ACLMessage reply = message.createReply();
@@ -71,7 +72,7 @@ public class ShopAgent extends Agent{
         Object[] arg = getArguments();
         stock = (List<Product>) arg[0];
 
-        addBehaviour(new StockInform());
+        addBehaviour(new RetailStockInform());
 
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
