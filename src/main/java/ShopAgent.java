@@ -99,7 +99,7 @@ public class ShopAgent extends Agent{
 
     private Product findProductByName(String name) {
         for (Product product: stock) {
-            if (product.getName() == name) {
+            if (product.getName().equals(name)) {
                 return product;
             }
         }
