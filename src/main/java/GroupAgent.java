@@ -1,9 +1,13 @@
 import jade.core.Agent;
+import jade.core.behaviours.CyclicBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
+import jade.lang.acl.ACLMessage;
+import jade.lang.acl.MessageTemplate;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -15,9 +19,34 @@ public class GroupAgent extends Agent{
     private int condition;
     private Map<String, Integer> buyers;
 
+    // Gets buyer and their desired quantity of the product, enlists them and replies
+    private class EnlistBuyers extends CyclicBehaviour {
+        public void action() {
+            MessageTemplate enlistRequest = MessageTemplate.MatchPerformative(ACLMessage.SUBSCRIBE);
+            ACLMessage message = myAgent.receive();
+
+            if (message != null) {
+                String buyer = message.getContent().split(" ")[0];
+                int quantity = Integer.valueOf(message.getContent().split(" ")[1]);
+                buyers.put(buyer, quantity);
+
+                ACLMessage reply = message.createReply();
+                reply.setPerformative(ACLMessage.INFORM);
+                reply.setContent("enlisted");
+            }
+            else {
+                block();
+            }
+        }
+    }
+
     protected void setup() {
         getArgs();
         register();
+
+        buyers = new HashMap<String, Integer>();
+
+        addBehaviour(new EnlistBuyers());
     }
 
     private void getArgs() {
