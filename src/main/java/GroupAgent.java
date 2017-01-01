@@ -1,4 +1,8 @@
 import jade.core.Agent;
+import jade.domain.DFService;
+import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.ServiceDescription;
+import jade.domain.FIPAException;
 
 import java.util.Map;
 
@@ -17,6 +21,19 @@ public class GroupAgent extends Agent{
         shopAddress = (String) args[1];
         condition = (Integer) args[2];
 
+        DFAgentDescription dfd = new DFAgentDescription();
+        dfd.setName(getAID());
 
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType("Group");
+        sd.setName(productName + " " + shopAddress);
+        dfd.addServices(sd);
+
+        try {
+            DFService.register(this, dfd);
+        }
+        catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
     }
 }
