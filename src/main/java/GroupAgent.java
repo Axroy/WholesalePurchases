@@ -47,6 +47,8 @@ public class GroupAgent extends Agent{
         buyers = new HashMap<String, Integer>();
 
         addBehaviour(new EnlistBuyers());
+
+        logAppearing();
     }
 
     private void getArgs() {
@@ -70,5 +72,10 @@ public class GroupAgent extends Agent{
         catch (FIPAException fe) {
             fe.printStackTrace();
         }
+    }
+    private void logAppearing() {
+        String log = "Group " + getAID().getName() + " was created!" + "\n";
+        log += "Used for wholesale purchases of " + productName + " from " + shopAddress + "\n";
+        System.out.print(log);
     }
 }
