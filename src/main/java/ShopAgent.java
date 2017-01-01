@@ -69,11 +69,19 @@ public class ShopAgent extends Agent{
 //    }
 
     protected void setup() {
-        Object[] arg = getArguments();
-        stock = (List<Product>) arg[0];
+        getArgs();
+        register();
 
         addBehaviour(new RetailStockInform());
 
+        logOpening();
+    }
+
+    private void getArgs() {
+        Object[] arg = getArguments();
+        stock = (List<Product>) arg[0];
+    }
+    private void register() {
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
         for (Product product: stock) {
@@ -89,7 +97,8 @@ public class ShopAgent extends Agent{
         catch (FIPAException fe) {
             fe.printStackTrace();
         }
-
+    }
+    private void logOpening() {
         String log = "Shop " + getAID().getName() + " opened!" + "\n";
         log += "Selling:" + "\n";
         for (Product product: stock) {

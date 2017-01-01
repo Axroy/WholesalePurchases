@@ -16,11 +16,17 @@ public class GroupAgent extends Agent{
     private Map<String, Integer> buyers;
 
     protected void setup() {
+        getArgs();
+        register();
+    }
+
+    private void getArgs() {
         Object[] args = getArguments();
         productName = (String) args[0];
         shopAddress = (String) args[1];
         condition = (Integer) args[2];
-
+    }
+    private void register() {
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
 

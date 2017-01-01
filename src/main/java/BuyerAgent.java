@@ -24,9 +24,7 @@ public class BuyerAgent extends Agent{
     private String currentProductName;
 
     protected void setup() {
-        Object[] arg = getArguments();
-        money = (Integer) arg[0];
-        productWishes = (Map<String, Integer>) arg[1];
+        getArgs();
 
         SequentialBehaviour buyRetail = new SequentialBehaviour(this) {
             public int onEnd() {
@@ -147,6 +145,15 @@ public class BuyerAgent extends Agent{
         buyRetail.addSubBehaviour(receiveReply);
         addBehaviour(buyRetail);
 
+        logAppearing();
+    }
+
+    private void getArgs() {
+        Object[] arg = getArguments();
+        money = (Integer) arg[0];
+        productWishes = (Map<String, Integer>) arg[1];
+    }
+    private void logAppearing() {
         String log = "New buyer appears! Name's " + getAID().getName() + "!" + "\n";
         log += "    " + "Money: " + money + "$" + "\n";
         for (Map.Entry<String, Integer> wish: productWishes.entrySet()) {
@@ -154,7 +161,6 @@ public class BuyerAgent extends Agent{
         }
         System.out.print(log);
     }
-
     private String  getNextWishedProductName() {
         for (Map.Entry<String, Integer> product: productWishes.entrySet()) {
             if (product.getValue() > 0)
