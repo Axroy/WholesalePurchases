@@ -20,10 +20,11 @@ public class GroupAgent extends Agent{
     private String productName;
     private String shopAddress;
     private int condition;
+    private int wholesalePrice;
     // Address and desired quantity of products
     private Map<String, Integer> buyersDesires;
     private Map<String, Boolean> buyersReadiness;
-
+    private boolean sentQueries;
     private boolean conditionFulfilled;
     private MessageTemplate template;
 
@@ -31,16 +32,17 @@ public class GroupAgent extends Agent{
     private class EnlistBuyers extends CyclicBehaviour {
         public void action() {
             MessageTemplate enlistRequest = MessageTemplate.MatchPerformative(ACLMessage.SUBSCRIBE);
-            ACLMessage message = myAgent.receive();
+            ACLMessage message = myAgent.receive(enlistRequest);
 
             if (message != null) {
                 AID buyer = message.getSender();
                 int quantity = Integer.valueOf(message.getContent());
                 buyersDesires.put(buyer.getName(), quantity);
 
-                ACLMessage reply = message.createReply();
+                //System.out.println(buyer.getName() + " joined " + myAgent.getLocalName());
+                /*ACLMessage reply = message.createReply();
                 reply.setPerformative(ACLMessage.INFORM);
-                reply.setContent("enlisted");
+                reply.setContent("enlisted");*/
             }
             else {
                 block();
@@ -72,6 +74,16 @@ public class GroupAgent extends Agent{
             }
             conditionFulfilled = true;
 
+            System.out.println(myAgent.getLocalName() + " ready for wholesale purchase!");
+            for (String buyer: buyersDesires.keySet()) {
+                System.out.println("    " + buyer);
+            }
+
+            if (sentQueries) {
+                finished = true;
+                return;
+            }
+
             for (String buyerAddress: buyersDesires.keySet()) {
                 ACLMessage message = new ACLMessage(ACLMessage.QUERY_IF);
                 AID buyer = new AID(buyerAddress);
@@ -80,9 +92,12 @@ public class GroupAgent extends Agent{
                 message.setConversationId("group_purchase");
                 message.setReplyWith(String.valueOf(System.currentTimeMillis()));
                 myAgent.send(message);
-                template = MessageTemplate.and(MessageTemplate.MatchConversationId("group_purchase"), MessageTemplate.MatchInReplyTo(message.getReplyWith()));
             }
             buyersReadiness = new HashMap<String, Boolean>();
+            for (String buyerAddress: buyersDesires.keySet()) {
+                buyersReadiness.put(buyerAddress, false);
+            }
+            sentQueries = true;
             finished = true;
         }
 
@@ -98,9 +113,11 @@ public class GroupAgent extends Agent{
                 return;
             }
 
-            ACLMessage reply = myAgent.receive(template);
+            ACLMessage reply = myAgent.receive(MessageTemplate.MatchConversationId("group_purchase"));
             if (reply != null) {
                 if (reply.getContent().equals("ready")) {
+                    System.out.println(reply.getSender().getName() + " is ready to purchase " + productName + " using group "
+                        + myAgent.getLocalName());
                     buyersReadiness.put(reply.getSender().getName(), true);
 
                     for (boolean readiness: buyersReadiness.values()) {
@@ -114,13 +131,19 @@ public class GroupAgent extends Agent{
                         ACLMessage message = new ACLMessage(ACLMessage.INFORM);
                         AID buyer = new AID(buyerAddress);
                         message.addReceiver(buyer);
-                        message.setContent(productName);
+                        message.setContent(productName + " " + wholesalePrice);
                         message.setConversationId("group_purchase");
                         message.setReplyWith(String.valueOf(System.currentTimeMillis()));
                         myAgent.send(message);
                     }
 
+                    System.out.println("Sent messages to:");
+                    for (String buyer: buyersReadiness.keySet()) {
+                        System.out.println("    " + buyer);
+                    }
+
                     buyersDesires.clear();
+                    sentQueries = false;
                     finished = true;
                 }
             }
@@ -136,6 +159,7 @@ public class GroupAgent extends Agent{
         register();
 
         buyersDesires = new HashMap<String, Integer>();
+        sentQueries = false;
 
         addBehaviour(new EnlistBuyers());
 
@@ -152,6 +176,7 @@ public class GroupAgent extends Agent{
         productName = (String) args[0];
         shopAddress = (String) args[1];
         condition = (Integer) args[2];
+        wholesalePrice = (Integer) args[3];
     }
     private void register() {
         DFAgentDescription dfd = new DFAgentDescription();

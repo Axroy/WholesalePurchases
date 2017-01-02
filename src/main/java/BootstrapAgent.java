@@ -49,7 +49,7 @@ public class BootstrapAgent extends Agent{
 //            agentController.start();
 
             // Name must not have spaces for parser to work!
-            Product cheeseHead = new Product("Cheese_head", 30, 15, 5);
+            Product cheeseHead = new Product("Cheese_head", 30, 15, 15);
 
             List<Product> cheeseShopStock = new LinkedList<Product>();
             cheeseShopStock.add(cheeseHead);
@@ -82,10 +82,10 @@ public class BootstrapAgent extends Agent{
             agentController = containerController.createNewAgent("Edward", "BuyerAgent", edwardArgs);
             agentController.start();*/
 
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 5; i++) {
                 int money = 1000 + i * 100;
                 Map<String, Integer> wish = new HashMap<String, Integer>();
-                wish.put("Cheese_head", 5 + i);
+                wish.put("Cheese_head", 1 + i);
                 Object[] buyerArgs = {money, wish};
                 agentController = containerController.createNewAgent("Cheese buyer " + i, "BuyerAgent", buyerArgs);
                 agentController.start();

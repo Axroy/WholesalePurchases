@@ -16,23 +16,20 @@ import jade.wrapper.AgentController;
 import jade.wrapper.ContainerController;
 import jade.wrapper.StaleProxyException;
 
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class BuyerAgent extends Agent{
     private int money;
     private Map<String, Integer> productWishes;
-    private List<String> groups;
+    private Map<String, String> productsGroups;
     private AID seller = null;
-
+    private boolean noShops;
     private MessageTemplate template;
     private String currentProductName;
 
     private class BuyWholesale extends SequentialBehaviour {
         public int onEnd() {
-            doWait(1000);
+            doWait(5000);
             reset();
             myAgent.addBehaviour(this);
             return super.onEnd();
@@ -43,11 +40,12 @@ public class BuyerAgent extends Agent{
         private boolean finished = false;
 
         public void action() {
-            groups = new LinkedList<String>();
-
+            productsGroups = new HashMap<String, String>();
+            noShops = false;
             DFAgentDescription[] shopsSearchResult = searchShops();
             if (shopsSearchResult == null || shopsSearchResult.length == 0) {
                 finished = true;
+                noShops = true;
                 System.out.println(myAgent.getName() + " found no shops!");
                 return;
             }
@@ -56,7 +54,7 @@ public class BuyerAgent extends Agent{
                 if (product.getValue() > 0) {
                     int bestChoiceWholesalePrice = money;
                     int bestChoiceCondition = 0;
-                    String bestChoiceAddress = "";
+                    String bestChoiceAddress = null;
 
                     for (DFAgentDescription shop: shopsSearchResult) {
                         Iterator itr = shop.getAllServices();
@@ -72,13 +70,21 @@ public class BuyerAgent extends Agent{
                         }
                     }
 
+                    if (bestChoiceAddress == null) {
+                        continue;
+                    }
+
                     String groupAddress = getGroupAddress(product.getKey(), bestChoiceAddress);
                     if (groupAddress == null) {
-                        createGroup(product.getKey(), bestChoiceAddress, bestChoiceCondition);
+                        createGroup(product.getKey(), bestChoiceAddress, bestChoiceCondition, bestChoiceWholesalePrice);
+                        while (groupAddress == null) {
+                            groupAddress = getGroupAddress(product.getKey(), bestChoiceAddress);
+                        }
                     }
-                    groups.add(groupAddress);
+                    productsGroups.put(product.getKey(), groupAddress);
                 }
             }
+            finished = true;
         }
 
         public boolean done() {
@@ -116,9 +122,9 @@ public class BuyerAgent extends Agent{
 
             return searchResult;
         }
-        private void createGroup(String productName, String shopAddress, int condition) {
+        private void createGroup(String productName, String shopAddress, int condition, int wholesalePrice) {
             try {
-                Object[] groupArgs = {productName, shopAddress, condition};
+                Object[] groupArgs = {productName, shopAddress, condition, wholesalePrice};
                 ContainerController containerController = getContainerController();
                 AgentController agentController = containerController.createNewAgent("Group_" + productName + "_" +
                     shopAddress.split("@")[0], "GroupAgent", groupArgs);
@@ -139,6 +145,7 @@ public class BuyerAgent extends Agent{
                     Iterator itr = group.getAllServices();
                     while (itr.hasNext()) {
                         ServiceDescription groupInfo = (ServiceDescription) itr.next();
+                        //System.out.println("===" + group.getName() + "===");
                         if (YellowPagesParser.getGroupShopName(groupInfo.getName()).equals(shopAddress)
                             && YellowPagesParser.getGroupProductName(groupInfo.getName()).equals(productName)) {
                             result = group.getName().getName();
@@ -150,6 +157,86 @@ public class BuyerAgent extends Agent{
             return result;
         }
     }
+    private class Enlist extends SimpleBehaviour {
+        boolean finished = false;
+
+        public void action() {
+            if (noShops) {
+                finished = true;
+                return;
+            }
+            for (Map.Entry<String, String> group: productsGroups.entrySet()) {
+                ACLMessage message = new ACLMessage(ACLMessage.SUBSCRIBE);
+                AID groupAID = new AID(group.getValue());
+                message.addReceiver(groupAID);
+                message.setContent(productWishes.get(group.getKey()).toString());
+                message.setConversationId("enlist");
+                message.setReplyWith(String.valueOf(System.currentTimeMillis()));
+                myAgent.send(message);
+                //template = MessageTemplate.and(MessageTemplate.MatchConversationId("enlist"), MessageTemplate.MatchInReplyTo(message.getReplyWith()));
+
+                /*ACLMessage reply = myAgent.blockingReceive(template);
+                if (reply != null) {
+                    if (!reply.getContent().equals("enlisted")) {
+                        System.out.println(myAgent.getName() + " tried to enlist to " + group.getValue() + " but failed!");
+                    }
+                    System.out.println(myAgent.getName() + " enlisted to " + group.getValue());
+                }*/
+                finished = true;
+            }
+        }
+
+        public boolean done(){
+            return finished;
+        }
+    }
+    private class AnswerReady extends CyclicBehaviour {
+        public void action() {
+            MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.QUERY_IF),
+                MessageTemplate.MatchConversationId("group_purchase"));
+            ACLMessage message = myAgent.receive(template);
+            if (message != null) {
+                if (message.getContent().equals("ready_for_purchase?")) {
+                    ACLMessage reply = message.createReply();
+                    reply.setContent("ready");
+                    myAgent.send(reply);
+                }
+            }
+            else {
+                block();
+            }
+        }
+    }
+    private class ReceiveBuyConfirmation extends CyclicBehaviour {
+        public void action() {
+            MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),
+                MessageTemplate.MatchConversationId("group_purchase"));
+            ACLMessage message = myAgent.receive(template);
+            if (message != null) {
+                System.out.println(myAgent.getLocalName() + " bought " + productWishes.get(message.getContent().split(" ")[0]) +
+                " " + message.getContent().split(" ")[0]);
+                money -= productWishes.get(message.getContent().split(" ")[0]) * Integer.valueOf(message.getContent().split(" ")[1]);
+                productWishes.put(message.getContent().split(" ")[0], 0);
+            }
+            else {
+                block();
+            }
+        }
+    }
+    private class dieWhenFinishedShopping extends CyclicBehaviour {
+        public void action() {
+            if (getNextWishedProductName() == null) {
+                System.out.println(getAID().getName() + " successfully finished shopping!");
+                doDelete();
+            }
+        }
+    }
+
+    // Planned behaviour order is as follows (unimplemented ones):
+    // - Enlist to all groups
+    // - Get confirmation
+    // - Answer "ready?" message
+    // - Get purchase confirmation
 
     protected void setup() {
         getArgs();
@@ -275,7 +362,14 @@ public class BuyerAgent extends Agent{
 
         BuyWholesale buyWholesale = new BuyWholesale();
         buyWholesale.addSubBehaviour(new GetShopsAndCreateGroups());
+        buyWholesale.addSubBehaviour(new Enlist());
         addBehaviour(buyWholesale);
+
+        addBehaviour(new AnswerReady());
+
+        addBehaviour(new ReceiveBuyConfirmation());
+
+        addBehaviour(new dieWhenFinishedShopping());
 
         logAppearing();
     }
