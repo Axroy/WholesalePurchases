@@ -89,6 +89,7 @@ public class BootstrapAgent extends Agent{
                 Object[] buyerArgs = {money, wish};
                 agentController = containerController.createNewAgent("Cheese buyer " + i, "BuyerAgent", buyerArgs);
                 agentController.start();
+                doWait(1000);
             }
         }
         catch (StaleProxyException spe) {

@@ -52,6 +52,7 @@ public class GroupAgent extends Agent{
     private class Purchase extends SequentialBehaviour {
         public int onEnd() {
             reset();
+            doWait(1000);
             myAgent.addBehaviour(this);
             return super.onEnd();
         }
@@ -170,7 +171,7 @@ public class GroupAgent extends Agent{
     }
     private void logAppearing() {
         String log = "Group " + getAID().getName() + " was created!" + "\n";
-        log += "Used for wholesale purchases of " + productName + " from " + shopAddress + "\n";
+        log += "    Used for wholesale purchases of " + productName + " from " + shopAddress + "\n";
         System.out.print(log);
     }
 }
