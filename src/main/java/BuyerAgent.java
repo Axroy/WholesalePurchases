@@ -232,12 +232,6 @@ public class BuyerAgent extends Agent{
         }
     }
 
-    // Planned behaviour order is as follows (unimplemented ones):
-    // - Enlist to all groups
-    // - Get confirmation
-    // - Answer "ready?" message
-    // - Get purchase confirmation
-
     protected void setup() {
         getArgs();
 
