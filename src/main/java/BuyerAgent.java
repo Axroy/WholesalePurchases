@@ -232,126 +232,120 @@ public class BuyerAgent extends Agent{
         }
     }
 
-    protected void setup() {
-        getArgs();
+    private class BuyRetail extends SequentialBehaviour {
+        public int onEnd() {
+            doWait(1000);
+            reset();
+            myAgent.addBehaviour(this);
+            return super.onEnd();
+        }
+    }
+    private class FindProduct extends SimpleBehaviour {
+        private boolean finished = false;
 
-        SequentialBehaviour buyRetail = new SequentialBehaviour(this) {
-            public int onEnd() {
-                doWait(1000);
-                reset();
-                myAgent.addBehaviour(this);
-                return super.onEnd();
+        public void action() {
+            currentProductName = getNextWishedProductName();
+            if (currentProductName == null) {
+                System.out.println(getAID().getName() + " successfully finished shopping!");
+                doDelete();
             }
-        };
 
-        SimpleBehaviour findProduct = new SimpleBehaviour() {
-            private boolean finished = false;
-
-            @Override
-            public void action() {
-                currentProductName = getNextWishedProductName();
-                if (currentProductName == null) {
-                    System.out.println(getAID().getName() + " successfully finished shopping!");
-                    doDelete();
-                }
-
-                DFAgentDescription agentTemplate = new DFAgentDescription();
-                ServiceDescription serviceDescription = new ServiceDescription();
-                serviceDescription.setType("Shop_product");
-                agentTemplate.addServices(serviceDescription);
-                try {
-                    // Find a shop which sells desired product for best price(wholesale)
-                    DFAgentDescription[] result = DFService.search(myAgent, agentTemplate);
-                    int bestWholesalePrice = money;
-                    for (DFAgentDescription shop: result) {
-                        Iterator itr = shop.getAllServices();
-                        while (itr.hasNext()) {
-                            ServiceDescription productInfo = (ServiceDescription) itr.next();
-                            if (YellowPagesParser.getShopProductName(productInfo.getName()).equals(currentProductName)) {
-                                if (YellowPagesParser.getShopProductWholesalePrice(productInfo.getName()) < bestWholesalePrice) {
-                                    bestWholesalePrice = YellowPagesParser.getShopProductWholesalePrice(productInfo.getName());
-                                    seller = new AID();
-                                    seller = shop.getName();
-                                }
+            DFAgentDescription agentTemplate = new DFAgentDescription();
+            ServiceDescription serviceDescription = new ServiceDescription();
+            serviceDescription.setType("Shop_product");
+            agentTemplate.addServices(serviceDescription);
+            try {
+                // Find a shop which sells desired product for best price(wholesale)
+                DFAgentDescription[] result = DFService.search(myAgent, agentTemplate);
+                int bestWholesalePrice = money;
+                for (DFAgentDescription shop: result) {
+                    Iterator itr = shop.getAllServices();
+                    while (itr.hasNext()) {
+                        ServiceDescription productInfo = (ServiceDescription) itr.next();
+                        if (YellowPagesParser.getShopProductName(productInfo.getName()).equals(currentProductName)) {
+                            if (YellowPagesParser.getShopProductWholesalePrice(productInfo.getName()) < bestWholesalePrice) {
+                                bestWholesalePrice = YellowPagesParser.getShopProductWholesalePrice(productInfo.getName());
+                                seller = new AID();
+                                seller = shop.getName();
                             }
                         }
                     }
-                    if (seller == null) {
-                        System.out.println(getAID().getName() + " tried to find a shop which sells " + currentProductName + " but was unsuccessful!");
-                    }
-                    finished = true;
                 }
-                catch (FIPAException fe) {
-                    fe.printStackTrace();
-                }
-            }
-
-            @Override
-            public boolean done() {
-                return finished;
-            }
-        };
-        SimpleBehaviour sendRequest = new SimpleBehaviour() {
-            private boolean finished = false;
-
-            @Override
-            public void action() {
                 if (seller == null) {
-                    finished = true;
+                    System.out.println(getAID().getName() + " tried to find a shop which sells " + currentProductName + " but was unsuccessful!");
                 }
+                finished = true;
+            }
+            catch (FIPAException fe) {
+                fe.printStackTrace();
+            }
+        }
 
-                ACLMessage message = new ACLMessage(ACLMessage.QUERY_IF);
-                message.addReceiver(seller);
-                message.setContent(currentProductName);
-                message.setConversationId("retail");
-                message.setReplyWith(String.valueOf(System.currentTimeMillis()));
-                myAgent.send(message);
-                template = MessageTemplate.and(MessageTemplate.MatchConversationId("retail"), MessageTemplate.MatchInReplyTo(message.getReplyWith()));
+        public boolean done() {
+            return finished;
+        }
+    }
+    private class SendRequest extends SimpleBehaviour {
+        private boolean finished = false;
 
+        public void action() {
+            if (seller == null) {
                 finished = true;
             }
 
-            @Override
-            public boolean done() {
-                return finished;
+            ACLMessage message = new ACLMessage(ACLMessage.QUERY_IF);
+            message.addReceiver(seller);
+            message.setContent(currentProductName);
+            message.setConversationId("retail");
+            message.setReplyWith(String.valueOf(System.currentTimeMillis()));
+            myAgent.send(message);
+            template = MessageTemplate.and(MessageTemplate.MatchConversationId("retail"), MessageTemplate.MatchInReplyTo(message.getReplyWith()));
+
+            finished = true;
+        }
+
+        public boolean done() {
+            return finished;
+        }
+    }
+    private class ReceiveReply extends SimpleBehaviour {
+        boolean finished = false;
+
+        public void action() {
+            if (seller == null) {
+                finished = true;
             }
-        };
-        SimpleBehaviour receiveReply = new SimpleBehaviour() {
-            boolean finished = false;
 
-            @Override
-            public void action() {
-                if (seller == null) {
-                    finished = true;
-                }
-
-                ACLMessage reply = myAgent.receive(template);
-                if (reply != null) {
-                    if (!reply.getContent().equals("not_available")) {
-                        System.out.println(getAID().getName() + " bought " + productWishes.get(currentProductName) + " " + currentProductName
-                            + " for " + (Integer.valueOf(reply.getContent()) * productWishes.get(currentProductName)) + "$!");
-                        money -= Integer.valueOf(reply.getContent()) * productWishes.get(currentProductName);
-                        productWishes.put(currentProductName, 0);
-                    }
-                    else {
-                        System.out.println(getAID().getName() + " tried to buy " + currentProductName + " but it wasn't available!");
-                    }
-                    finished = true;
+            ACLMessage reply = myAgent.receive(template);
+            if (reply != null) {
+                if (!reply.getContent().equals("not_available")) {
+                    System.out.println(getAID().getName() + " bought " + productWishes.get(currentProductName) + " " + currentProductName
+                        + " for " + (Integer.valueOf(reply.getContent()) * productWishes.get(currentProductName)) + "$!");
+                    money -= Integer.valueOf(reply.getContent()) * productWishes.get(currentProductName);
+                    productWishes.put(currentProductName, 0);
                 }
                 else {
-                    block();
+                    System.out.println(getAID().getName() + " tried to buy " + currentProductName + " but it wasn't available!");
                 }
+                finished = true;
             }
-
-            @Override
-            public boolean done() {
-                return finished;
+            else {
+                block();
             }
-        };
+        }
 
-        buyRetail.addSubBehaviour(findProduct);
-        buyRetail.addSubBehaviour(sendRequest);
-        buyRetail.addSubBehaviour(receiveReply);
+        public boolean done() {
+            return finished;
+        }
+    }
+
+    protected void setup() {
+        getArgs();
+
+        BuyRetail buyRetail = new BuyRetail();
+        buyRetail.addSubBehaviour(new FindProduct());
+        buyRetail.addSubBehaviour(new SendRequest());
+        buyRetail.addSubBehaviour(new ReceiveReply());
         //addBehaviour(buyRetail);
 
         BuyWholesale buyWholesale = new BuyWholesale();
