@@ -74,14 +74,14 @@ public class GroupAgent extends Agent{
             }
             conditionFulfilled = true;
 
-            System.out.println(myAgent.getLocalName() + " ready for wholesale purchase!");
-            for (String buyer: buyersDesires.keySet()) {
-                System.out.println("    " + buyer);
-            }
-
             if (sentQueries) {
                 finished = true;
                 return;
+            }
+
+            System.out.println(myAgent.getLocalName() + " ready for wholesale purchase!" + " Buyers:");
+            for (String buyer: buyersDesires.keySet()) {
+                System.out.println("    " + buyer);
             }
 
             for (String buyerAddress: buyersDesires.keySet()) {
