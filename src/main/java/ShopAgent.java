@@ -99,10 +99,11 @@ public class ShopAgent extends Agent{
         }
     }
     private void logOpening() {
-        String log = "Shop " + getAID().getName() + " opened!" + "\n";
+        String log = "Shop " + getAID().getLocalName() + " opened!" + "\n";
         log += "Selling:" + "\n";
         for (Product product: stock) {
-            log += "    " + product.getName() + ": " + product.getPrice() + "$" + "\n";
+            log += "    " + product.getName() + ": " + product.getPrice() + "$" + " (wholesale: " +
+                product.getWholesalePrice() + " condition: " + product.getCondition() + ")" + "\n";
         }
         System.out.print(log);
     }

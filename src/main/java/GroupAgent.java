@@ -79,10 +79,7 @@ public class GroupAgent extends Agent{
                 return;
             }
 
-            System.out.println(myAgent.getLocalName() + " ready for wholesale purchase!" + " Buyers:");
-            for (String buyer: buyersDesires.keySet()) {
-                System.out.println("    " + buyer);
-            }
+            logConditionFulfilled(myAgent.getLocalName());
 
             for (String buyerAddress: buyersDesires.keySet()) {
                 ACLMessage message = new ACLMessage(ACLMessage.QUERY_IF);
@@ -116,8 +113,7 @@ public class GroupAgent extends Agent{
             ACLMessage reply = myAgent.receive(MessageTemplate.MatchConversationId("group_purchase"));
             if (reply != null) {
                 if (reply.getContent().equals("ready")) {
-                    System.out.println(reply.getSender().getName() + " is ready to purchase " + productName + " using group "
-                        + myAgent.getLocalName());
+                    logReceivedReadyMessage(reply.getSender().getLocalName(), myAgent.getLocalName());
                     buyersReadiness.put(reply.getSender().getName(), true);
 
                     for (boolean readiness: buyersReadiness.values()) {
@@ -135,11 +131,6 @@ public class GroupAgent extends Agent{
                         message.setConversationId("group_purchase");
                         message.setReplyWith(String.valueOf(System.currentTimeMillis()));
                         myAgent.send(message);
-                    }
-
-                    System.out.println("Sent messages to:");
-                    for (String buyer: buyersReadiness.keySet()) {
-                        System.out.println("    " + buyer);
                     }
 
                     buyersDesires.clear();
@@ -194,9 +185,20 @@ public class GroupAgent extends Agent{
             fe.printStackTrace();
         }
     }
+
     private void logAppearing() {
-        String log = "Group " + getAID().getName() + " was created!" + "\n";
-        log += "    Used for wholesale purchases of " + productName + " from " + shopAddress + "\n";
+        String log = "Group " + getAID().getLocalName() + " was created!" + "\n";
+        log += "    Used for wholesale purchases of " + productName + " from " + shopAddress.split("@")[0] + "\n";
         System.out.print(log);
+    }
+    private void logConditionFulfilled(String groupName) {
+        System.out.println(groupName + " ready for wholesale purchase!" + " Buyers:");
+        for (String buyer: buyersDesires.keySet()) {
+            System.out.println("    " + buyer.split("@")[0]);
+        }
+    }
+    private void logReceivedReadyMessage(String senderName, String groupName) {
+        System.out.println(senderName + " is ready to purchase " + productName + " using group "
+            + groupName);
     }
 }

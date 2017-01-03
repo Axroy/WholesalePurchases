@@ -213,10 +213,11 @@ public class BuyerAgent extends Agent{
                 MessageTemplate.MatchConversationId("group_purchase"));
             ACLMessage message = myAgent.receive(template);
             if (message != null) {
-                System.out.println(myAgent.getLocalName() + " bought " + productWishes.get(message.getContent().split(" ")[0]) +
-                " " + message.getContent().split(" ")[0]);
-                money -= productWishes.get(message.getContent().split(" ")[0]) * Integer.valueOf(message.getContent().split(" ")[1]);
-                productWishes.put(message.getContent().split(" ")[0], 0);
+                String product = message.getContent().split(" ")[0];
+                int price = Integer.valueOf(message.getContent().split(" ")[1]);
+                money -= productWishes.get(product) * price;
+                logWholesalePurchase(myAgent.getLocalName(), product, price);
+                productWishes.put(product, 0);
             }
             else {
                 block();
@@ -226,7 +227,7 @@ public class BuyerAgent extends Agent{
     private class dieWhenFinishedShopping extends CyclicBehaviour {
         public void action() {
             if (getNextWishedProductName() == null) {
-                System.out.println(getAID().getName() + " successfully finished shopping!");
+                logFinishedShopping();
                 doDelete();
             }
         }
@@ -368,12 +369,19 @@ public class BuyerAgent extends Agent{
         productWishes = (Map<String, Integer>) arg[1];
     }
     private void logAppearing() {
-        String log = "New buyer appears! Name's " + getAID().getName() + "!" + "\n";
+        String log = "New buyer appears! Name's " + getAID().getLocalName() + "!" + "\n";
         log += "    " + "Money: " + money + "$" + "\n";
         for (Map.Entry<String, Integer> wish: productWishes.entrySet()) {
             log += "    " + "Wants " + wish.getValue() + " " + wish.getKey() + "\n";
         }
         System.out.print(log);
+    }
+    private void logWholesalePurchase(String buyerName, String productName, int price) {
+        System.out.println(buyerName + " bought " + productWishes.get(productName) + " " + productName + ", each for "
+            + price + "$" + " (wholesale)");
+    }
+    private void logFinishedShopping() {
+        System.out.println(getAID().getLocalName() + " successfully finished shopping!");
     }
     private String  getNextWishedProductName() {
         for (Map.Entry<String, Integer> product: productWishes.entrySet()) {
