@@ -1,8 +1,6 @@
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.behaviours.CyclicBehaviour;
-import jade.core.behaviours.SequentialBehaviour;
-import jade.core.behaviours.SimpleBehaviour;
+import jade.core.behaviours.*;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
@@ -26,7 +24,7 @@ public class GroupAgent extends Agent{
     private Map<String, Boolean> buyersReadiness;
     private boolean sentQueries;
     private boolean conditionFulfilled;
-    private MessageTemplate template;
+    private Behaviour resetIfNotReadyInTime;
 
     // Gets buyer and their desired quantity of the product, enlists them and replies
     private class EnlistBuyers extends CyclicBehaviour {
@@ -90,10 +88,25 @@ public class GroupAgent extends Agent{
                 message.setReplyWith(String.valueOf(System.currentTimeMillis()));
                 myAgent.send(message);
             }
+
             buyersReadiness = new HashMap<String, Boolean>();
             for (String buyerAddress: buyersDesires.keySet()) {
                 buyersReadiness.put(buyerAddress, false);
             }
+
+            // Reset if someone is not ready in time
+            resetIfNotReadyInTime = new WakerBehaviour(myAgent, 5000) {
+                @Override
+                protected void onWake() {
+                    buyersDesires.clear();
+                    buyersReadiness.clear();
+                    sentQueries = false;
+                    System.out.println(myAgent.getLocalName() + " failed to get all readiness responses in time! Resetting.");
+                    super.onWake();
+                }
+            };
+            addBehaviour(resetIfNotReadyInTime);
+
             sentQueries = true;
             finished = true;
         }
@@ -134,7 +147,9 @@ public class GroupAgent extends Agent{
                     }
 
                     buyersDesires.clear();
+                    buyersReadiness.clear();
                     sentQueries = false;
+                    removeBehaviour(resetIfNotReadyInTime);
                     finished = true;
                 }
             }
@@ -192,10 +207,11 @@ public class GroupAgent extends Agent{
         System.out.print(log);
     }
     private void logConditionFulfilled(String groupName) {
-        System.out.println(groupName + " ready for wholesale purchase!" + " Buyers:");
+        String log = groupName + " ready for wholesale purchase!" + " Buyers:" + "\n";
         for (String buyer: buyersDesires.keySet()) {
-            System.out.println("    " + buyer.split("@")[0]);
+            log += "    " + buyer.split("@")[0] + "\n";
         }
+        System.out.print(log);
     }
     private void logReceivedReadyMessage(String senderName, String groupName) {
         System.out.println(senderName + " is ready to purchase " + productName + " using group "
