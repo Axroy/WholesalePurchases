@@ -343,22 +343,45 @@ public class BuyerAgent extends Agent{
     protected void setup() {
         getArgs();
 
-        BuyRetail buyRetail = new BuyRetail();
+        final BuyRetail buyRetail = new BuyRetail();
         buyRetail.addSubBehaviour(new FindProduct());
         buyRetail.addSubBehaviour(new SendRequest());
         buyRetail.addSubBehaviour(new ReceiveReply());
         //addBehaviour(buyRetail);
 
-        BuyWholesale buyWholesale = new BuyWholesale();
+        final BuyWholesale buyWholesale = new BuyWholesale();
         buyWholesale.addSubBehaviour(new GetShopsAndCreateGroups());
         buyWholesale.addSubBehaviour(new Enlist());
         addBehaviour(buyWholesale);
 
-        addBehaviour(new AnswerReady());
+        final AnswerReady answerReady = new AnswerReady();
+        addBehaviour(answerReady);
 
-        addBehaviour(new ReceiveBuyConfirmation());
+        final ReceiveBuyConfirmation receiveBuyConfirmation = new ReceiveBuyConfirmation();
+        addBehaviour(receiveBuyConfirmation);
 
         addBehaviour(new dieWhenFinishedShopping());
+
+        // Switch to retail after timeout
+        addBehaviour(new WakerBehaviour(this, 10000) {
+            @Override
+            protected void onWake() {
+                if (getNextWishedProductName() == null) {
+                    doDelete();
+                    return;
+                }
+
+                logGoingRetail(myAgent.getLocalName(), 10000);
+
+                removeBehaviour(buyWholesale);
+                removeBehaviour(answerReady);
+                removeBehaviour(receiveBuyConfirmation);
+
+                addBehaviour(buyRetail);
+
+                super.onWake();
+            }
+        });
 
         logAppearing();
     }
@@ -382,6 +405,16 @@ public class BuyerAgent extends Agent{
     }
     private void logFinishedShopping() {
         System.out.println(getAID().getLocalName() + " successfully finished shopping!");
+    }
+    private void logGoingRetail(String buyerName, long timeMs) {
+        String log = buyerName + " lives for " + timeMs + " ms already!" + "\n";
+        for (Map.Entry<String, Integer> wish: productWishes.entrySet()) {
+            if (wish.getValue() > 0) {
+                log += "    " + "Still wants " + wish.getValue() + " " + wish.getKey() + "\n";
+            }
+        }
+        log += "Going retail!" + "\n";
+        System.out.print(log);
     }
     private String  getNextWishedProductName() {
         for (Map.Entry<String, Integer> product: productWishes.entrySet()) {
