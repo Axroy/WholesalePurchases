@@ -44,30 +44,6 @@ public class ShopAgent extends Agent{
         }
     }
 
-//    private class Sell extends CyclicBehaviour {
-//        public void action() {
-//            MessageTemplate sellRequest = MessageTemplate.MatchPerformative(ACLMessage.REQUEST);
-//            ACLMessage message = myAgent.receive(sellRequest);
-//            if (message != null) {
-//                String product = message.getContent();
-//                ACLMessage reply = message.createReply();
-//                Integer price = (Integer) stock.get(product);
-//                if (price != null) {
-//                    reply.setPerformative(ACLMessage.INFORM);
-//                    reply.setContent(String.valueOf(price.intValue()));
-//                }
-//                else {
-//                    reply.setPerformative(ACLMessage.INFORM);
-//                    reply.setContent("not_available");
-//                }
-//                myAgent.send(reply);
-//            }
-//            else {
-//                block();
-//            }
-//        }
-//    }
-
     protected void setup() {
         getArgs();
         register();
