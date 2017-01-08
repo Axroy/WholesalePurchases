@@ -36,11 +36,6 @@ public class GroupAgent extends Agent{
                 AID buyer = message.getSender();
                 int quantity = Integer.valueOf(message.getContent());
                 buyersDesires.put(buyer.getName(), quantity);
-
-                //System.out.println(buyer.getName() + " joined " + myAgent.getLocalName());
-                /*ACLMessage reply = message.createReply();
-                reply.setPerformative(ACLMessage.INFORM);
-                reply.setContent("enlisted");*/
             }
             else {
                 block();

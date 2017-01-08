@@ -173,15 +173,6 @@ public class BuyerAgent extends Agent{
                 message.setConversationId("enlist");
                 message.setReplyWith(String.valueOf(System.currentTimeMillis()));
                 myAgent.send(message);
-                //template = MessageTemplate.and(MessageTemplate.MatchConversationId("enlist"), MessageTemplate.MatchInReplyTo(message.getReplyWith()));
-
-                /*ACLMessage reply = myAgent.blockingReceive(template);
-                if (reply != null) {
-                    if (!reply.getContent().equals("enlisted")) {
-                        System.out.println(myAgent.getName() + " tried to enlist to " + group.getValue() + " but failed!");
-                    }
-                    System.out.println(myAgent.getName() + " enlisted to " + group.getValue());
-                }*/
                 finished = true;
             }
         }
