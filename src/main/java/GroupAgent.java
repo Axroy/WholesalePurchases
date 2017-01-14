@@ -46,9 +46,16 @@ public class GroupAgent extends Agent{
     // If condition is fulfilled checks readiness of all current buyers and then sends them purchase confirmation
     private class Purchase extends SequentialBehaviour {
         public int onEnd() {
-            reset();
-            doWait(1000);
-            myAgent.addBehaviour(this);
+            myAgent.addBehaviour(new WakerBehaviour(myAgent, 1000) {
+                @Override
+                protected void onWake() {
+                    SequentialBehaviour purchase = new Purchase();
+                    purchase.addSubBehaviour(new CheckEnlistedIfConditionReached());
+                    purchase.addSubBehaviour(new GetRepliesAndPurchaseIfEveryoneReady());
+                    addBehaviour(purchase);
+                    super.onWake();
+                }
+            });
             return super.onEnd();
         }
     }

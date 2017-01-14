@@ -29,9 +29,19 @@ public class BuyerAgent extends Agent{
 
     private class BuyWholesale extends SequentialBehaviour {
         public int onEnd() {
-            doWait(5000);
-            reset();
-            myAgent.addBehaviour(this);
+//            doWait(5000);
+//            reset();
+//            myAgent.addBehaviour(this);
+            myAgent.addBehaviour(new WakerBehaviour(myAgent, 5000) {
+                @Override
+                protected void onWake() {
+                    BuyWholesale buyWholesale = new BuyWholesale();
+                    buyWholesale.addSubBehaviour(new GetShopsAndCreateGroups());
+                    buyWholesale.addSubBehaviour(new Enlist());
+                    myAgent.addBehaviour(buyWholesale);
+                    super.onWake();
+                }
+            });
             return super.onEnd();
         }
     }
@@ -226,9 +236,17 @@ public class BuyerAgent extends Agent{
 
     private class BuyRetail extends SequentialBehaviour {
         public int onEnd() {
-            doWait(1000);
-            reset();
-            myAgent.addBehaviour(this);
+            myAgent.addBehaviour(new WakerBehaviour(myAgent, 1000) {
+                @Override
+                protected void onWake() {
+                    BuyRetail buyRetail = new BuyRetail();
+                    buyRetail.addSubBehaviour(new FindProduct());
+                    buyRetail.addSubBehaviour(new SendRequest());
+                    buyRetail.addSubBehaviour(new ReceiveReply());
+                    addBehaviour(buyRetail);
+                    super.onWake();
+                }
+            });
             return super.onEnd();
         }
     }
@@ -354,7 +372,7 @@ public class BuyerAgent extends Agent{
         addBehaviour(new dieWhenFinishedShopping());
 
         // Switch to retail after timeout
-        addBehaviour(new WakerBehaviour(this, 10000) {
+        addBehaviour(new WakerBehaviour(this, 15000) {
             @Override
             protected void onWake() {
                 if (getNextWishedProductName() == null) {
