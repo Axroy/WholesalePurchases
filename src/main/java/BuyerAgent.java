@@ -4,7 +4,6 @@
 
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.NameClashException;
 import jade.core.behaviours.*;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -225,14 +224,6 @@ public class BuyerAgent extends Agent{
             }
         }
     }
-    private class dieWhenFinishedShopping extends CyclicBehaviour {
-        public void action() {
-            if (getNextWishedProductName() == null) {
-                logFinishedShopping();
-                doDelete();
-            }
-        }
-    }
 
     private class BuyRetail extends SequentialBehaviour {
         public int onEnd() {
@@ -369,7 +360,16 @@ public class BuyerAgent extends Agent{
         final ReceiveBuyConfirmation receiveBuyConfirmation = new ReceiveBuyConfirmation();
         addBehaviour(receiveBuyConfirmation);
 
-        addBehaviour(new dieWhenFinishedShopping());
+        TickerBehaviour dieWhenFinishedShopping = new TickerBehaviour(this, 1000) {
+            @Override
+            protected void onTick() {
+                if (getNextWishedProductName() == null) {
+                    logFinishedShopping();
+                    doDelete();
+                }
+            }
+        };
+        addBehaviour(dieWhenFinishedShopping);
 
         // Switch to retail after timeout
         addBehaviour(new WakerBehaviour(this, 15000) {
