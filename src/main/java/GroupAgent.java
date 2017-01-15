@@ -8,8 +8,7 @@ import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by Nikita on 30.12.2016.
@@ -21,10 +20,9 @@ public class GroupAgent extends Agent{
     private int wholesalePrice;
     // Address and desired quantity of products
     private Map<String, Integer> buyersDesires;
-    private Map<String, Boolean> buyersReadiness;
     private boolean sentQueries;
     private boolean conditionFulfilled;
-    private Behaviour resetIfNotReadyInTime;
+    private List<ReceiverBehaviour.Handle> handles;
 
     // Gets buyer and their desired quantity of the product, enlists them and replies
     private class EnlistBuyers extends CyclicBehaviour {
@@ -49,9 +47,12 @@ public class GroupAgent extends Agent{
             myAgent.addBehaviour(new WakerBehaviour(myAgent, 1000) {
                 @Override
                 protected void onWake() {
+                    ParallelBehaviour getReplies = new ParallelBehaviour(myAgent, ParallelBehaviour.WHEN_ALL);
+
                     SequentialBehaviour purchase = new Purchase();
-                    purchase.addSubBehaviour(new CheckEnlistedIfConditionReached());
-                    purchase.addSubBehaviour(new GetRepliesAndPurchaseIfEveryoneReady());
+                    purchase.addSubBehaviour(new CheckEnlistedIfConditionReached(getReplies));
+                    purchase.addSubBehaviour(getReplies);
+                    purchase.addSubBehaviour(new PurchaseIfEveryoneReady());
                     addBehaviour(purchase);
                     super.onWake();
                 }
@@ -61,6 +62,11 @@ public class GroupAgent extends Agent{
     }
     private class CheckEnlistedIfConditionReached extends SimpleBehaviour {
         private boolean finished = false;
+        private ParallelBehaviour getReplies;
+
+        public CheckEnlistedIfConditionReached(ParallelBehaviour getReplies) {
+            this.getReplies = getReplies;
+        }
 
         public void action() {
             int sum = 0;
@@ -81,6 +87,8 @@ public class GroupAgent extends Agent{
 
             logConditionFulfilled(myAgent.getLocalName());
 
+            handles = new LinkedList<ReceiverBehaviour.Handle>();
+
             for (String buyerAddress: buyersDesires.keySet()) {
                 ACLMessage message = new ACLMessage(ACLMessage.QUERY_IF);
                 AID buyer = new AID(buyerAddress);
@@ -89,25 +97,12 @@ public class GroupAgent extends Agent{
                 message.setConversationId("group_purchase");
                 message.setReplyWith(String.valueOf(System.currentTimeMillis()));
                 myAgent.send(message);
-            }
 
-            buyersReadiness = new HashMap<String, Boolean>();
-            for (String buyerAddress: buyersDesires.keySet()) {
-                buyersReadiness.put(buyerAddress, false);
+                ReceiverBehaviour.Handle handle = ReceiverBehaviour.newHandle();
+                getReplies.addSubBehaviour(new ReceiverBehaviour(myAgent, handle, 5000, MessageTemplate.and(
+                    MessageTemplate.MatchSender(buyer), MessageTemplate.MatchConversationId("group_purchase"))));
+                handles.add(handle);
             }
-
-            // Reset if someone is not ready in time
-            resetIfNotReadyInTime = new WakerBehaviour(myAgent, 5000) {
-                @Override
-                protected void onWake() {
-                    buyersDesires.clear();
-                    buyersReadiness.clear();
-                    sentQueries = false;
-                    System.out.println(myAgent.getLocalName() + " failed to get all readiness responses in time! Resetting.");
-                    super.onWake();
-                }
-            };
-            addBehaviour(resetIfNotReadyInTime);
 
             sentQueries = true;
             finished = true;
@@ -117,44 +112,56 @@ public class GroupAgent extends Agent{
             return finished;
         }
     }
-    private class GetRepliesAndPurchaseIfEveryoneReady extends SimpleBehaviour {
+    private class PurchaseIfEveryoneReady extends SimpleBehaviour {
         private boolean finished = false;
+
         public void action() {
             if (!conditionFulfilled) {
                 finished = true;
                 return;
             }
 
-            ACLMessage reply = myAgent.receive(MessageTemplate.MatchConversationId("group_purchase"));
-            if (reply != null) {
-                if (reply.getContent().equals("ready")) {
-                    logReceivedReadyMessage(reply.getSender().getLocalName(), myAgent.getLocalName());
-                    buyersReadiness.put(reply.getSender().getName(), true);
-
-                    for (boolean readiness: buyersReadiness.values()) {
-                        if (!readiness) {
-                            finished = true;
-                            return;
-                        }
+            try {
+                for (ReceiverBehaviour.Handle handle: handles) {
+                    if (!handle.getMessage().getContent().equals("ready")) {
+                        buyersDesires.clear();
+                        sentQueries = false;
+                        System.out.println(myAgent.getLocalName() + " found out that somebody is not ready anymore! Resetting.");
+                        finished = true;
+                        return;
                     }
-
-                    for (String buyerAddress: buyersReadiness.keySet()) {
-                        ACLMessage message = new ACLMessage(ACLMessage.INFORM);
-                        AID buyer = new AID(buyerAddress);
-                        message.addReceiver(buyer);
-                        message.setContent(productName + " " + wholesalePrice);
-                        message.setConversationId("group_purchase");
-                        message.setReplyWith(String.valueOf(System.currentTimeMillis()));
-                        myAgent.send(message);
+                    else {
+                        logReceivedReadyMessage(handle.getMessage().getSender().getLocalName(), myAgent.getLocalName());
                     }
-
-                    buyersDesires.clear();
-                    buyersReadiness.clear();
-                    sentQueries = false;
-                    removeBehaviour(resetIfNotReadyInTime);
-                    finished = true;
                 }
             }
+            catch (ReceiverBehaviour.TimedOut to) {
+                buyersDesires.clear();
+                handles.clear();
+                sentQueries = false;
+                System.out.println(myAgent.getLocalName() + " failed to get all readiness responses in time! Resetting.");
+                finished = true;
+                return;
+            }
+            catch (ReceiverBehaviour.NotYetReady nyr) {
+                finished = true;
+                return;
+            }
+
+            for (String buyerAddress: buyersDesires.keySet()) {
+                ACLMessage message = new ACLMessage(ACLMessage.INFORM);
+                AID buyer = new AID(buyerAddress);
+                message.addReceiver(buyer);
+                message.setContent(productName + " " + wholesalePrice);
+                message.setConversationId("group_purchase");
+                message.setReplyWith(String.valueOf(System.currentTimeMillis()));
+                myAgent.send(message);
+            }
+
+            buyersDesires.clear();
+            handles.clear();
+            sentQueries = false;
+            finished = true;
         }
 
         public boolean done() {
@@ -171,9 +178,12 @@ public class GroupAgent extends Agent{
 
         addBehaviour(new EnlistBuyers());
 
+        ParallelBehaviour getReplies = new ParallelBehaviour(this, ParallelBehaviour.WHEN_ALL);
+
         SequentialBehaviour purchase = new Purchase();
-        purchase.addSubBehaviour(new CheckEnlistedIfConditionReached());
-        purchase.addSubBehaviour(new GetRepliesAndPurchaseIfEveryoneReady());
+        purchase.addSubBehaviour(new CheckEnlistedIfConditionReached(getReplies));
+        purchase.addSubBehaviour(getReplies);
+        purchase.addSubBehaviour(new PurchaseIfEveryoneReady());
         addBehaviour(purchase);
 
         logAppearing();

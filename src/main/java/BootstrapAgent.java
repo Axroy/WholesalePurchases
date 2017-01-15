@@ -12,9 +12,9 @@ import java.util.Map;
 
 public class BootstrapAgent extends Agent{
     protected void setup() {
-//        bootstrapShops();
-//        bootstrapAgents();
-        bootstrapChangeGroupDemo();
+        bootstrapShops();
+        bootstrapAgents();
+//        bootstrapChangeGroupDemo();
         doDelete();
     }
 
