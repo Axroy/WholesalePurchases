@@ -123,6 +123,15 @@ public class BootstrapAgent extends Agent{
                 agentController.start();
                 doWait(1000);
             }
+
+            doWait(10000);
+
+            int money = 1000;
+            Map<String, Integer> wish = new HashMap<String, Integer>();
+            wish.put("Potato", 2);
+            Object[] buyerArgs = {money, wish};
+            agentController = containerController.createNewAgent("Potato_buyer_X", "BuyerAgent", buyerArgs);
+            agentController.start();
         }
         catch (StaleProxyException spe) {
             spe.printStackTrace();

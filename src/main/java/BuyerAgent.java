@@ -14,6 +14,7 @@ import jade.lang.acl.MessageTemplate;
 import jade.wrapper.AgentController;
 import jade.wrapper.ContainerController;
 import jade.wrapper.StaleProxyException;
+import jade.core.behaviours.ReceiverBehaviour.Handle;
 
 import java.util.*;
 
@@ -233,7 +234,9 @@ public class BuyerAgent extends Agent{
                     BuyRetail buyRetail = new BuyRetail();
                     buyRetail.addSubBehaviour(new FindProduct());
                     buyRetail.addSubBehaviour(new SendRequest());
-                    buyRetail.addSubBehaviour(new ReceiveReply());
+                    Handle handle = ReceiverBehaviour.newHandle();
+                    buyRetail.addSubBehaviour(new ReceiverBehaviour(myAgent, handle, -1, template));
+                    buyRetail.addSubBehaviour(new ProcessReply(handle));
                     addBehaviour(buyRetail);
                     super.onWake();
                 }
@@ -309,29 +312,39 @@ public class BuyerAgent extends Agent{
             return finished;
         }
     }
-    private class ReceiveReply extends SimpleBehaviour {
+    private class ProcessReply extends SimpleBehaviour {
         boolean finished = false;
+        private Handle handle;
+        private AID sender;
+
+        public ProcessReply(Handle handle) {
+            this.handle = handle;
+        }
 
         public void action() {
             if (seller == null) {
                 finished = true;
             }
-
-            ACLMessage reply = myAgent.receive(template);
-            if (reply != null) {
+            try {
+                ACLMessage reply = handle.getMessage();
+                sender = reply.getSender();
                 if (!reply.getContent().equals("not_available")) {
                     System.out.println(getAID().getName() + " bought " + productWishes.get(currentProductName) + " " + currentProductName
                         + " for " + (Integer.valueOf(reply.getContent()) * productWishes.get(currentProductName)) + "$!");
                     money -= Integer.valueOf(reply.getContent()) * productWishes.get(currentProductName);
                     productWishes.put(currentProductName, 0);
-                }
-                else {
+                } else {
                     System.out.println(getAID().getName() + " tried to buy " + currentProductName + " but it wasn't available!");
                 }
                 finished = true;
             }
-            else {
-                block();
+            catch (ReceiverBehaviour.NotYetReady nyr) {
+                System.out.println(myAgent.getLocalName() + " tried to get reply message from " + sender.getLocalName()
+                    + " but it was not yet ready");
+            }
+            catch (ReceiverBehaviour.TimedOut to) {
+                System.out.println(myAgent.getLocalName() + " tried to get reply message from " + sender.getLocalName()
+                    + " but it timed out");
             }
         }
 
@@ -346,8 +359,9 @@ public class BuyerAgent extends Agent{
         final BuyRetail buyRetail = new BuyRetail();
         buyRetail.addSubBehaviour(new FindProduct());
         buyRetail.addSubBehaviour(new SendRequest());
-        buyRetail.addSubBehaviour(new ReceiveReply());
-        //addBehaviour(buyRetail);
+        Handle handle = ReceiverBehaviour.newHandle();
+        buyRetail.addSubBehaviour(new ReceiverBehaviour(this, handle,-1, template));
+        buyRetail.addSubBehaviour(new ProcessReply(handle));
 
         final BuyWholesale buyWholesale = new BuyWholesale();
         buyWholesale.addSubBehaviour(new GetShopsAndCreateGroups());
@@ -371,8 +385,9 @@ public class BuyerAgent extends Agent{
         };
         addBehaviour(dieWhenFinishedShopping);
 
+        final int retailTimeout = 15000;
         // Switch to retail after timeout
-        addBehaviour(new WakerBehaviour(this, 15000) {
+        addBehaviour(new WakerBehaviour(this, retailTimeout) {
             @Override
             protected void onWake() {
                 if (getNextWishedProductName() == null) {
@@ -380,7 +395,7 @@ public class BuyerAgent extends Agent{
                     return;
                 }
 
-                logGoingRetail(myAgent.getLocalName(), 10000);
+                logGoingRetail(myAgent.getLocalName(), retailTimeout);
 
                 removeBehaviour(buyWholesale);
                 removeBehaviour(answerReady);
