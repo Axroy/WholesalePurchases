@@ -46,15 +46,13 @@ public class BuyerAgent extends Agent{
         }
     }
     // Gets best wholesale shops for each desired product and creates groups for them if they (groups) don't exist
-    private class GetShopsAndCreateGroups extends SimpleBehaviour {
-        private boolean finished = false;
+    private class GetShopsAndCreateGroups extends OneShotBehaviour {
 
         public void action() {
             productsGroups = new HashMap<String, String>();
             noShops = false;
             DFAgentDescription[] shopsSearchResult = searchShops();
             if (shopsSearchResult == null || shopsSearchResult.length == 0) {
-                finished = true;
                 noShops = true;
                 System.out.println(myAgent.getName() + " found no shops!");
                 return;
@@ -94,11 +92,6 @@ public class BuyerAgent extends Agent{
                     productsGroups.put(product.getKey(), groupAddress);
                 }
             }
-            finished = true;
-        }
-
-        public boolean done() {
-            return finished;
         }
 
         private DFAgentDescription[] searchShops() {
@@ -167,12 +160,9 @@ public class BuyerAgent extends Agent{
             return result;
         }
     }
-    private class Enlist extends SimpleBehaviour {
-        boolean finished = false;
-
+    private class Enlist extends OneShotBehaviour {
         public void action() {
             if (noShops) {
-                finished = true;
                 return;
             }
             for (Map.Entry<String, String> group: productsGroups.entrySet()) {
@@ -183,12 +173,7 @@ public class BuyerAgent extends Agent{
                 message.setConversationId("enlist");
                 message.setReplyWith(String.valueOf(System.currentTimeMillis()));
                 myAgent.send(message);
-                finished = true;
             }
-        }
-
-        public boolean done(){
-            return finished;
         }
     }
     private class AnswerReady extends CyclicBehaviour {
@@ -244,9 +229,7 @@ public class BuyerAgent extends Agent{
             return super.onEnd();
         }
     }
-    private class FindProduct extends SimpleBehaviour {
-        private boolean finished = false;
-
+    private class FindProduct extends OneShotBehaviour {
         public void action() {
             currentProductName = getNextWishedProductName();
             if (currentProductName == null) {
@@ -278,23 +261,17 @@ public class BuyerAgent extends Agent{
                 if (seller == null) {
                     System.out.println(getAID().getName() + " tried to find a shop which sells " + currentProductName + " but was unsuccessful!");
                 }
-                finished = true;
             }
             catch (FIPAException fe) {
                 fe.printStackTrace();
             }
         }
-
-        public boolean done() {
-            return finished;
-        }
     }
-    private class SendRequest extends SimpleBehaviour {
-        private boolean finished = false;
+    private class SendRequest extends OneShotBehaviour {
 
         public void action() {
             if (seller == null) {
-                finished = true;
+                return;
             }
 
             ACLMessage message = new ACLMessage(ACLMessage.QUERY_IF);
@@ -304,16 +281,9 @@ public class BuyerAgent extends Agent{
             message.setReplyWith(String.valueOf(System.currentTimeMillis()));
             myAgent.send(message);
             template = MessageTemplate.and(MessageTemplate.MatchConversationId("retail"), MessageTemplate.MatchInReplyTo(message.getReplyWith()));
-
-            finished = true;
-        }
-
-        public boolean done() {
-            return finished;
         }
     }
-    private class ProcessReply extends SimpleBehaviour {
-        boolean finished = false;
+    private class ProcessReply extends OneShotBehaviour {
         private Handle handle;
         private AID sender;
 
@@ -323,7 +293,7 @@ public class BuyerAgent extends Agent{
 
         public void action() {
             if (seller == null) {
-                finished = true;
+                return;
             }
             try {
                 ACLMessage reply = handle.getMessage();
@@ -336,7 +306,6 @@ public class BuyerAgent extends Agent{
                 } else {
                     System.out.println(getAID().getName() + " tried to buy " + currentProductName + " but it wasn't available!");
                 }
-                finished = true;
             }
             catch (ReceiverBehaviour.NotYetReady nyr) {
                 System.out.println(myAgent.getLocalName() + " tried to get reply message from " + sender.getLocalName()
@@ -346,10 +315,6 @@ public class BuyerAgent extends Agent{
                 System.out.println(myAgent.getLocalName() + " tried to get reply message from " + sender.getLocalName()
                     + " but it timed out");
             }
-        }
-
-        public boolean done() {
-            return finished;
         }
     }
 

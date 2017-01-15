@@ -60,8 +60,7 @@ public class GroupAgent extends Agent{
             return super.onEnd();
         }
     }
-    private class CheckEnlistedIfConditionReached extends SimpleBehaviour {
-        private boolean finished = false;
+    private class CheckEnlistedIfConditionReached extends OneShotBehaviour {
         private ParallelBehaviour getReplies;
 
         public CheckEnlistedIfConditionReached(ParallelBehaviour getReplies) {
@@ -74,14 +73,12 @@ public class GroupAgent extends Agent{
                 sum += quantity;
             }
             if (sum < condition) {
-                finished = true;
                 conditionFulfilled = false;
                 return;
             }
             conditionFulfilled = true;
 
             if (sentQueries) {
-                finished = true;
                 return;
             }
 
@@ -105,19 +102,12 @@ public class GroupAgent extends Agent{
             }
 
             sentQueries = true;
-            finished = true;
-        }
-
-        public boolean done(){
-            return finished;
         }
     }
-    private class PurchaseIfEveryoneReady extends SimpleBehaviour {
-        private boolean finished = false;
+    private class PurchaseIfEveryoneReady extends OneShotBehaviour {
 
         public void action() {
             if (!conditionFulfilled) {
-                finished = true;
                 return;
             }
 
@@ -127,7 +117,6 @@ public class GroupAgent extends Agent{
                         buyersDesires.clear();
                         sentQueries = false;
                         System.out.println(myAgent.getLocalName() + " found out that somebody is not ready anymore! Resetting.");
-                        finished = true;
                         return;
                     }
                     else {
@@ -140,11 +129,9 @@ public class GroupAgent extends Agent{
                 handles.clear();
                 sentQueries = false;
                 System.out.println(myAgent.getLocalName() + " failed to get all readiness responses in time! Resetting.");
-                finished = true;
                 return;
             }
             catch (ReceiverBehaviour.NotYetReady nyr) {
-                finished = true;
                 return;
             }
 
@@ -161,11 +148,6 @@ public class GroupAgent extends Agent{
             buyersDesires.clear();
             handles.clear();
             sentQueries = false;
-            finished = true;
-        }
-
-        public boolean done() {
-            return finished;
         }
     }
 
